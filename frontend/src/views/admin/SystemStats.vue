@@ -13,7 +13,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getTotalStatistics } from '@/api/monitor'
+import { getTotalStatistics } from '@/api/admin'
 import { ElMessage } from 'element-plus'
 
 const stats = ref([

@@ -16,7 +16,7 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ../../backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
@@ -35,7 +35,7 @@ services:
 
   frontend:
     build:
-      context: ../frontend
+      context: ../../frontend
       dockerfile: Dockerfile
     volumes:
       - frontend_dist:/app/dist
@@ -45,7 +45,7 @@ services:
   mysql:
     image: mysql:8.0
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=cloud_platform
@@ -104,7 +104,7 @@ services:
 
   spark:
     build:
-      context: ../spark-jobs
+      context: ../../spark-jobs
       dockerfile: Dockerfile
     environment:
       - SPARK_MASTER=local[*]

@@ -3,10 +3,13 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    openjdk-17-jre-headless \
+    openjdk-21-jre \
     && rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+ENV PATH=$PATH:$JAVA_HOME/bin
+
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

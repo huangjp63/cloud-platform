@@ -22,7 +22,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { getAllUsers } from '@/api/monitor'
+import { getAllUsers } from '@/api/admin'
 import { ElMessage } from 'element-plus'
 
 const userList = ref([])

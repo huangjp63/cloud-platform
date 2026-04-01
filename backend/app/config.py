@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Cloud-Platform"
     DEBUG: bool = True
     
-    DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/cloud_platform"
+    DATABASE_URL: str = "mysql+pymysql://root:123456@localhost:3306/cloud_platform"
     REDIS_URL: str = "redis://localhost:6379/0"
     
     MINIO_ENDPOINT: str = "localhost:9000"
