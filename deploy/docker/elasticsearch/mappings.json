@@ -1,0 +1,13 @@
+{
+  "mappings": {
+    "properties": {
+      "timestamp": { "type": "date" },
+      "user_id": { "type": "integer" },
+      "action": { "type": "keyword" },
+      "file_id": { "type": "integer" },
+      "file_name": { "type": "text" },
+      "file_size": { "type": "long" },
+      "file_type": { "type": "keyword" }
+    }
+  }
+}
