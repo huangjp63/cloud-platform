@@ -160,7 +160,7 @@ def rename_file(
     return APIResponse(code=200, message="重命名成功", data={"id": file.id, "name": file.name})
 
 
-@router.get("/preview/{file_id}")
+@router.get("/preview/{file_id}", response_model=APIResponse)
 def preview_file(
     file_id: int,
     db: Session = Depends(get_db),
@@ -170,7 +170,11 @@ def preview_file(
         if not file_service.check_file_owner(db, file_id, current_user.id):
             raise HTTPException(status_code=403, detail="无权预览此文件")
     
-    return file_service.preview_file(db, file_id)
+    result = file_service.preview_file(db, file_id, current_user.id, current_user.role)
+    if result:
+        return APIResponse(code=200, message="获取成功", data=result)
+    else:
+        return APIResponse(code=404, message="文件不存在", data=None)
 
 
 @router.get("/list", response_model=APIResponse)

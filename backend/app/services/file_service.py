@@ -14,6 +14,17 @@ import zipfile
 
 
 class FileService:
+    def file_to_dict(self, file):
+        """将 File 对象转换为字典"""
+        return {
+            "id": file.id,
+            "name": file.name,
+            "size": file.size,
+            "file_type": file.file_type,
+            "create_time": file.create_time.isoformat() if file.create_time else None,
+            "update_time": file.update_time.isoformat() if file.update_time else None
+        }
+    
     def check_file_md5(self, db: Session, md5: str) -> bool:
         """检查文件 MD5 是否存在（秒传功能）"""
         return db.query(File).filter(File.md5 == md5, File.is_deleted == 0).first() is not None
@@ -269,7 +280,7 @@ class FileService:
         url = minio_client.get_file_url(file.storage_path, expires=3600)
         
         return {
-            "file": file,
+            "file": self.file_to_dict(file),
             "url": url
         }
     

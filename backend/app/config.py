@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "mysql+pymysql://root:123456@localhost:3306/cloud_platform"
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ENDPOINT: str = "minio:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin"
     MINIO_BUCKET: str = "cloud-files"

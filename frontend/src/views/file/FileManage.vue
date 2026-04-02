@@ -4,7 +4,8 @@
       <template #header>
         <div class="header">
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/file' }">全部文件</el-breadcrumb-item>
+            <el-breadcrumb-item @click="goToRoot">全部文件</el-breadcrumb-item>
+            <el-breadcrumb-item v-for="(item, index) in breadcrumb" :key="item.id" @click="goToFolder(item.id)">{{ item.name }}</el-breadcrumb-item>
           </el-breadcrumb>
           <div class="actions">
             <el-button type="primary" @click="showUploadDialog">上传文件</el-button>
@@ -13,17 +14,26 @@
         </div>
       </template>
       
-      <el-table :data="fileList" style="width: 100%">
-        <el-table-column prop="name" label="文件名" />
+      <el-table :data="combinedList" style="width: 100%">
+        <el-table-column prop="name" label="文件名">
+          <template #default="{ row }">
+            <span v-if="row.type === 'folder'" style="display: flex; align-items: center; gap: 8px; cursor: pointer" @click="enterFolder(row)">
+              <el-icon><Folder /></el-icon>
+              <span>{{ row.name }}</span>
+            </span>
+            <span v-else>{{ row.name }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="size" label="大小" width="120">
           <template #default="{ row }">
-            {{ formatFileSize(row.size) }}
+            {{ formatFileSize(row.size || 0) }}
           </template>
         </el-table-column>
         <el-table-column prop="create_time" label="创建时间" width="180" />
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="250">
           <template #default="{ row }">
-            <el-button link type="primary" @click="downloadFile(row)">下载</el-button>
+            <el-button v-if="row.type === 'file'" link type="primary" @click="previewFile(row)">预览</el-button>
+            <el-button v-if="row.type === 'file'" link type="primary" @click="downloadFile(row)">下载</el-button>
             <el-button link type="primary" @click="renameFile(row)">重命名</el-button>
             <el-button link type="danger" @click="deleteFile(row)">删除</el-button>
           </template>
@@ -85,25 +95,101 @@
         </span>
       </template>
     </el-dialog>
+    
+    <!-- 预览对话框 -->
+    <el-dialog v-model="previewDialogVisible" title="文件预览" width="800px" :fullscreen="isFullscreen">
+      <div class="preview-container">
+        <!-- 图片预览 -->
+        <img v-if="isImage" :src="previewUrl" class="preview-image" />
+        <!-- 视频预览 -->
+        <video v-else-if="isVideo" :src="previewUrl" controls class="preview-video"></video>
+        <!-- 音频预览 -->
+        <audio v-else-if="isAudio" :src="previewUrl" controls class="preview-audio"></audio>
+        <!-- 文本预览 -->
+        <div v-else-if="isText" class="preview-text">
+          <pre>{{ previewContent }}</pre>
+        </div>
+        <!-- 不支持预览 -->
+        <div v-else class="preview-unsupported">
+          <el-icon :size="64"><Document /></el-icon>
+          <p>该文件类型暂不支持预览</p>
+          <el-button type="primary" @click="downloadCurrentFile">下载文件</el-button>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="previewDialogVisible = false">关闭</el-button>
+          <el-button v-if="!isFullscreen" type="primary" @click="isFullscreen = true">全屏</el-button>
+          <el-button v-else type="primary" @click="isFullscreen = false">退出全屏</el-button>
+          <el-button type="primary" @click="downloadCurrentFile">下载</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { formatFileSize } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Folder, Document } from '@element-plus/icons-vue'
 import * as fileApi from '@/api/file'
 import * as folderApi from '@/api/folder'
 import SparkMD5 from 'spark-md5'
 
 const fileList = ref([])
+const folderList = ref([])
+const currentFolderId = ref(0)
+const breadcrumb = ref([])
+
+const combinedList = computed(() => {
+  const files = fileList.value.map(file => ({ ...file, type: 'file' }))
+  const folders = folderList.value.map(folder => ({ ...folder, type: 'folder' }))
+  return [...folders, ...files].sort((a, b) => {
+    if (a.type !== b.type) {
+      return a.type === 'folder' ? -1 : 1
+    }
+    return new Date(b.create_time) - new Date(a.create_time)
+  })
+})
 const uploadDialogVisible = ref(false)
 const folderDialogVisible = ref(false)
 const renameDialogVisible = ref(false)
 const uploadLoading = ref(false)
 const selectedFiles = ref([])
 const currentFile = ref(null)
+
+// 预览相关
+const previewDialogVisible = ref(false)
+const previewUrl = ref('')
+const previewContent = ref('')
+const isFullscreen = ref(false)
+const currentPreviewFile = ref(null)
+
+// 判断文件类型
+const isImage = computed(() => {
+  if (!currentPreviewFile.value) return false
+  const ext = currentPreviewFile.value.name?.split('.').pop()?.toLowerCase()
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)
+})
+
+const isVideo = computed(() => {
+  if (!currentPreviewFile.value) return false
+  const ext = currentPreviewFile.value.name?.split('.').pop()?.toLowerCase()
+  return ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(ext)
+})
+
+const isAudio = computed(() => {
+  if (!currentPreviewFile.value) return false
+  const ext = currentPreviewFile.value.name?.split('.').pop()?.toLowerCase()
+  return ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a'].includes(ext)
+})
+
+const isText = computed(() => {
+  if (!currentPreviewFile.value) return false
+  const ext = currentPreviewFile.value.name?.split('.').pop()?.toLowerCase()
+  return ['txt', 'md', 'json', 'js', 'html', 'css', 'py', 'java', 'c', 'cpp', 'h', 'xml', 'yaml', 'yml', 'log'].includes(ext)
+})
 
 // 新建文件夹表单
 const folderForm = reactive({ name: '' })
@@ -123,10 +209,38 @@ const renameRules = {
 const loadFileList = async () => {
   try {
     // 调用后端API获取文件列表
-    const response = await fileApi.getFileList(0)
-    fileList.value = response.data
+    const fileResponse = await fileApi.getFileList(currentFolderId.value)
+    fileList.value = fileResponse.data
+    
+    // 调用后端API获取文件夹列表
+    const folderResponse = await folderApi.getFolderList(currentFolderId.value)
+    folderList.value = folderResponse.data
   } catch (error) {
     ElMessage.error('获取文件列表失败')
+  }
+}
+
+// 进入文件夹
+const enterFolder = (folder) => {
+  currentFolderId.value = folder.id
+  breadcrumb.value.push({ id: folder.id, name: folder.name })
+  loadFileList()
+}
+
+// 返回根目录
+const goToRoot = () => {
+  currentFolderId.value = 0
+  breadcrumb.value = []
+  loadFileList()
+}
+
+// 进入指定文件夹
+const goToFolder = (folderId) => {
+  const index = breadcrumb.value.findIndex(item => item.id === folderId)
+  if (index !== -1) {
+    breadcrumb.value = breadcrumb.value.slice(0, index + 1)
+    currentFolderId.value = folderId
+    loadFileList()
   }
 }
 
@@ -185,7 +299,7 @@ const confirmUpload = async () => {
       }
       
       // 上传文件
-      await fileApi.uploadSingle(file.raw, 0)
+      await fileApi.uploadSingle(file.raw, currentFolderId.value)
       ElMessage.success(`${file.name} 上传成功`)
     }
     
@@ -211,7 +325,7 @@ const confirmCreateFolder = async () => {
   if (!valid) return
   
   try {
-    await folderApi.createFolder(folderForm.name, 0)
+    await folderApi.createFolder(folderForm.name, currentFolderId.value)
     ElMessage.success('文件夹创建成功')
     folderDialogVisible.value = false
     await loadFileList()
@@ -239,7 +353,52 @@ const downloadFile = async (row) => {
   }
 }
 
-// 重命名文件
+// 预览文件
+const previewFile = async (row) => {
+  try {
+    currentPreviewFile.value = row
+    const response = await fileApi.previewFile(row.id)
+    
+    if (response.data && response.data.url) {
+      // 将 MinIO 内部 URL 转换为通过 Nginx 代理的 URL
+      // MinIO 内部 URL 格式: http://minio:9000/...
+      // 转换为: http://localhost/minio/...
+      previewUrl.value = response.data.url.replace('http://minio:9000/', 'http://localhost/minio/')
+      
+      // 对于文本文件，直接获取内容并显示
+      if (isText.value) {
+        try {
+          const textResponse = await fetch(previewUrl.value)
+          // 明确使用 UTF-8 编码解析文本
+          const textContent = await textResponse.text()
+          previewContent.value = textContent
+        } catch (error) {
+          console.error('获取文本内容失败:', error)
+          previewContent.value = '获取文本内容失败，请尝试下载查看'
+        }
+      } else {
+        // 重置预览内容
+        previewContent.value = ''
+      }
+      
+      previewDialogVisible.value = true
+      isFullscreen.value = false
+    } else {
+      ElMessage.error('获取预览链接失败')
+    }
+  } catch (error) {
+    ElMessage.error('预览失败：' + (error.message || '未知错误'))
+  }
+}
+
+// 下载当前预览的文件
+const downloadCurrentFile = () => {
+  if (currentPreviewFile.value) {
+    downloadFile(currentPreviewFile.value)
+  }
+}
+
+// 重命名文件或文件夹
 const renameFile = (row) => {
   currentFile.value = row
   renameForm.name = row.name
@@ -252,7 +411,11 @@ const confirmRename = async () => {
   if (!valid) return
   
   try {
-    await fileApi.renameFile(currentFile.value.id, renameForm.name)
+    if (currentFile.value.type === 'file') {
+      await fileApi.renameFile(currentFile.value.id, renameForm.name)
+    } else {
+      await folderApi.renameFolder(currentFile.value.id, renameForm.name)
+    }
     ElMessage.success('重命名成功')
     renameDialogVisible.value = false
     await loadFileList()
@@ -261,13 +424,17 @@ const confirmRename = async () => {
   }
 }
 
-// 删除文件
+// 删除文件或文件夹
 const deleteFile = (row) => {
-  ElMessageBox.confirm('确定要删除该文件吗？', '提示', {
+  ElMessageBox.confirm(`确定要删除${row.type === 'file' ? '该文件' : '该文件夹'}吗？`, '提示', {
     type: 'warning'
   }).then(async () => {
     try {
-      await fileApi.deleteFile(row.id)
+      if (row.type === 'file') {
+        await fileApi.deleteFile(row.id)
+      } else {
+        await folderApi.deleteFolder(row.id)
+      }
       ElMessage.success('删除成功')
       await loadFileList()
     } catch (error) {
@@ -308,5 +475,54 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+.preview-container {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 20px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 600px;
+  object-fit: contain;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 600px;
+}
+
+.preview-audio {
+  width: 100%;
+  max-width: 500px;
+}
+
+.preview-text {
+  width: 100%;
+  max-height: 600px;
+  overflow: auto;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.preview-unsupported {
+  text-align: center;
+  color: #909399;
+}
+
+.preview-unsupported p {
+  margin: 20px 0;
 }
 </style>

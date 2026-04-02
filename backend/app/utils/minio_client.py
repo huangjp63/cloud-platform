@@ -34,11 +34,16 @@ class MinioClient:
     
     def get_file_url(self, object_name: str, expires: int = 3600):
         from datetime import timedelta
-        return self.client.presigned_get_object(
+        # 生成原始的MinIO URL
+        url = self.client.presigned_get_object(
             self.bucket,
             object_name,
             expires=timedelta(seconds=expires)
         )
+        # 打印生成的原始URL
+        print(f"Original MinIO URL: {url}")
+        # 直接返回原始的MinIO URL
+        return url
 
 
 minio_client = MinioClient()

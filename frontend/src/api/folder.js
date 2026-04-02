@@ -22,3 +22,11 @@ export function renameFolder(folderId, name) {
     params: { name }
   })
 }
+
+export function getFolderList(parentId = 0) {
+  return request({
+    url: '/folder/list',
+    method: 'get',
+    params: { parent_id: parentId }
+  })
+}
