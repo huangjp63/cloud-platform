@@ -18,6 +18,19 @@ class RecycleService:
     def recover_item(self, db: Session, item_id: int):
         item = db.query(RecycleItem).filter(RecycleItem.id == item_id).first()
         if item:
+            # 根据item_type恢复对应的文件或文件夹
+            if item.item_type == 'file':
+                from app.models.file import File
+                file = db.query(File).filter(File.id == item.item_id).first()
+                if file:
+                    file.is_deleted = 0
+            elif item.item_type == 'folder':
+                from app.models.folder import Folder
+                folder = db.query(Folder).filter(Folder.id == item.item_id).first()
+                if folder:
+                    folder.is_deleted = 0
+            
+            # 删除回收站记录
             db.delete(item)
             db.commit()
     

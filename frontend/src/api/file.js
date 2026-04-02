@@ -4,17 +4,17 @@ export function checkMd5(md5, filename) {
   return request({
     url: '/file/check/md5',
     method: 'post',
-    data: { md5, filename }
+    params: { md5, filename }
   })
 }
 
 export function uploadSingle(file, parentId = 0) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('parent_id', parentId)
   return request({
     url: '/file/upload/single',
     method: 'post',
+    params: { parent_id: parentId },
     data: formData,
     headers: { 'Content-Type': 'multipart/form-data' }
   })
@@ -72,5 +72,13 @@ export function previewFile(fileId) {
   return request({
     url: `/file/preview/${fileId}`,
     method: 'get'
+  })
+}
+
+export function getFileList(parentId = 0) {
+  return request({
+    url: `/file/list`,
+    method: 'get',
+    params: { parent_id: parentId }
   })
 }

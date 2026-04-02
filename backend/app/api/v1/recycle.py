@@ -8,6 +8,19 @@ from app.models.user import User
 
 router = APIRouter()
 
+def recycle_item_to_dict(item):
+    """将RecycleItem对象转换为可序列化的字典"""
+    return {
+        "id": item.id,
+        "item_type": item.item_type,
+        "item_id": item.item_id,
+        "name": item.name,
+        "size": item.size,
+        "user_id": item.user_id,
+        "original_path": item.original_path,
+        "delete_time": item.delete_time.strftime("%Y-%m-%d %H:%M:%S") if item.delete_time else None
+    }
+
 
 @router.get("/list", response_model=APIResponse)
 def get_recycle_list(
@@ -19,7 +32,10 @@ def get_recycle_list(
     else:
         items = recycle_service.get_user_recycle_items(db, current_user.id)
     
-    return APIResponse(code=200, message="获取成功", data=items)
+    # 将RecycleItem对象转换为可序列化的字典列表
+    items_dict = [recycle_item_to_dict(item) for item in items]
+    
+    return APIResponse(code=200, message="获取成功", data=items_dict)
 
 
 @router.put("/recover/{item_id}", response_model=APIResponse)

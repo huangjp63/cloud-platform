@@ -58,6 +58,13 @@ def logout(current_user: User = Depends(get_current_user)):
 
 @router.get("/info", response_model=APIResponse)
 def get_user_info(current_user: User = Depends(get_current_user)):
+    def format_datetime(value):
+        if isinstance(value, str):
+            return value
+        elif value:
+            return value.strftime("%Y-%m-%d %H:%M:%S")
+        return None
+    
     return APIResponse(
         code=200,
         message="获取成功",
@@ -65,7 +72,7 @@ def get_user_info(current_user: User = Depends(get_current_user)):
             "id": current_user.id,
             "username": current_user.username,
             "role": current_user.role,
-            "create_time": current_user.create_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "last_login_time": current_user.last_login_time.strftime("%Y-%m-%d %H:%M:%S") if current_user.last_login_time else None
+            "create_time": format_datetime(current_user.create_time),
+            "last_login_time": format_datetime(current_user.last_login_time)
         }
     )
