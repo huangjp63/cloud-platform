@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Cloud-Platform"
     DEBUG: bool = True
     
-    DATABASE_URL: str = "mysql+pymysql://root:123456@localhost:3306/cloud_platform"
-    REDIS_URL: str = "redis://localhost:6379/0"
+    DATABASE_URL: str = "mysql+pymysql://root:!Hjp20040915@192.168.0.246:3306/cloud_platform"
+    REDIS_URL: str = "!Hjp20040915@redis-8a19618b-0810-40c4-89a8-76721315900f.cn-south-1.dcs.myhuaweicloud.com:6379/0"
     
     MINIO_ENDPOINT: str = "minio:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
@@ -16,9 +16,9 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool = False
     
     # 华为云OBS配置
-    OBS_ENDPOINT: str = "obs.cn-north-1.myhuaweicloud.com"
-    OBS_ACCESS_KEY: str = ""
-    OBS_SECRET_KEY: str = ""
+    OBS_ENDPOINT: str = "obs.cn-south-1.myhuaweicloud.com"
+    OBS_ACCESS_KEY: str = "HPUAE0B3GURYV1VT2UHP"
+    OBS_SECRET_KEY: str = "OBS_SECRET_KEY=y6h1Nif6G94eGLlRIGSS8sYviOipw5f7KZQxxJ6i"
     OBS_BUCKET: str = "cloud-platform"
     OBS_SECURE: bool = True
     

@@ -1,37 +1,33 @@
 from minio import Minio
 from app.config import settings
-
+import os
 
 class MinioClient:
     def __init__(self):
         # 优先使用OBS配置（如果有）
-        if settings.OBS_ACCESS_KEY and settings.OBS_SECRET_KEY:
-            self.client = Minio(
-                settings.OBS_ENDPOINT,
-                access_key=settings.OBS_ACCESS_KEY,
-                secret_key=settings.OBS_SECRET_KEY,
-                secure=settings.OBS_SECURE
-            )
-            self.bucket = settings.OBS_BUCKET
-        else:
-            # 否则使用MinIO配置
-            self.client = Minio(
-                settings.MINIO_ENDPOINT,
-                access_key=settings.MINIO_ACCESS_KEY,
-                secret_key=settings.MINIO_SECRET_KEY,
-                secure=settings.MINIO_SECURE
-            )
-            self.bucket = settings.MINIO_BUCKET
+        self.endpoint = os.getenv("OBS_ENDPOINT")
+        self.access_key = os.getenv("OBS_ACCESS_KEY")
+        self.secret_key = os.getenv("OBS_SECRET_KEY")
+        self.bucket_name = os.getenv("OBS_BUCKET_NAME")
+
+        
+        self.client = Minio(
+             f"{self.bucket_name}.{self.endpoint}",  # 虚拟主机风格：桶名.端点
+             access_key=self.access_key,
+             secret_key=self.secret_key,
+             secure=True,  # 必须用 HTTPS
+             region="cn-south-1"  # 你的 OBS 区域
+         )
         
         self._ensure_bucket()
     
     def _ensure_bucket(self):
-        if not self.client.bucket_exists(self.bucket):
-            self.client.make_bucket(self.bucket)
+        if not self.client.bucket_exists(self.bucket_name):
+            self.client.make_bucket(self.bucket_name)
     
     def upload_file(self, object_name: str, file_data, length: int, content_type: str = "application/octet-stream"):
         self.client.put_object(
-            self.bucket,
+            self.bucket_name,
             object_name,
             file_data,
             length,
@@ -39,16 +35,16 @@ class MinioClient:
         )
     
     def download_file(self, object_name: str):
-        return self.client.get_object(self.bucket, object_name)
+        return self.client.get_object(self.bucket_name, object_name)
     
     def delete_file(self, object_name: str):
-        self.client.remove_object(self.bucket, object_name)
+        self.client.remove_object(self.bucket_name, object_name)
     
     def get_file_url(self, object_name: str, expires: int = 3600):
         from datetime import timedelta
         # 生成预签名URL
         url = self.client.presigned_get_object(
-            self.bucket,
+            self.bucket_name,
             object_name,
             expires=timedelta(seconds=expires)
         )

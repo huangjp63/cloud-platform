@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   nginx:
@@ -20,16 +19,18 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - /root/cloud-platform/deploy/docker/.env
     environment:
-      - DATABASE_URL=mysql+pymysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/cloud_platform
-      - REDIS_URL=redis://redis:6379/0
-      - MINIO_ENDPOINT=minio:9000
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-    depends_on:
-      - mysql
-      - redis
-      - minio
-      - elasticsearch
+      - DATABASE_URL=mysql+pymysql://${RDS_USER}:${RDS_PASSWORD}@${RDS_ENDPOINT}:3306/${RDS_DATABASE}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+      - OBS_ENDPOINT=${OBS_ENDPOINT}
+      - OBS_ACCESS_KEY=${OBS_ACCESS_KEY}
+      - OBS_SECRET_KEY=${OBS_SECRET_KEY}
+      - OBS_BUCKET_NAME=${OBS_BUCKET_NAME}
+      - SECRET_KEY=${SECRET_KEY}
+      - API_PREFIX=${API_PREFIX}
+      - LOG_LEVEL=${LOG_LEVEL}
     networks:
       - cloud-platform-network
 
@@ -42,75 +43,15 @@ services:
     networks:
       - cloud-platform-network
 
-  mysql:
-    image: mysql:8.0
-    ports:
-      - "3307:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=cloud_platform
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - cloud-platform-network
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - cloud-platform-network
-
-  minio:
-    image: minio/minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    networks:
-      - cloud-platform-network
-
-  elasticsearch:
-    image: elasticsearch:8.11.0
-    ports:
-      - "9200:9200"
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    volumes:
-      - es_data:/usr/share/elasticsearch/data
-    networks:
-      - cloud-platform-network
-
-  kibana:
-    image: kibana:8.11.0
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
-    networks:
-      - cloud-platform-network
-
   spark:
     build:
       context: ../../spark-jobs
       dockerfile: Dockerfile
     environment:
       - SPARK_MASTER=local[*]
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
+      - ELASTICSEARCH_URL=http://${ES_ENDPOINT}:9200
+      - ELASTICSEARCH_USER=${ES_USER}
+      - ELASTICSEARCH_PASSWORD=${ES_PASSWORD}
     networks:
       - cloud-platform-network
 
@@ -119,8 +60,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
-  redis_data:
-  minio_data:
-  es_data:
   frontend_dist:
