@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "cloud-files"
     MINIO_SECURE: bool = False
     
+    # 华为云OBS配置
+    OBS_ENDPOINT: str = "obs.cn-north-1.myhuaweicloud.com"
+    OBS_ACCESS_KEY: str = ""
+    OBS_SECRET_KEY: str = ""
+    OBS_BUCKET: str = "cloud-platform"
+    OBS_SECURE: bool = True
+    
     ELASTICSEARCH_URL: str = "http://localhost:9200"
     
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"

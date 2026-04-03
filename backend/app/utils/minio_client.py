@@ -4,13 +4,25 @@ from app.config import settings
 
 class MinioClient:
     def __init__(self):
-        self.client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE
-        )
-        self.bucket = settings.MINIO_BUCKET
+        # 优先使用OBS配置（如果有）
+        if settings.OBS_ACCESS_KEY and settings.OBS_SECRET_KEY:
+            self.client = Minio(
+                settings.OBS_ENDPOINT,
+                access_key=settings.OBS_ACCESS_KEY,
+                secret_key=settings.OBS_SECRET_KEY,
+                secure=settings.OBS_SECURE
+            )
+            self.bucket = settings.OBS_BUCKET
+        else:
+            # 否则使用MinIO配置
+            self.client = Minio(
+                settings.MINIO_ENDPOINT,
+                access_key=settings.MINIO_ACCESS_KEY,
+                secret_key=settings.MINIO_SECRET_KEY,
+                secure=settings.MINIO_SECURE
+            )
+            self.bucket = settings.MINIO_BUCKET
+        
         self._ensure_bucket()
     
     def _ensure_bucket(self):
@@ -34,15 +46,12 @@ class MinioClient:
     
     def get_file_url(self, object_name: str, expires: int = 3600):
         from datetime import timedelta
-        # 生成原始的MinIO URL
+        # 生成预签名URL
         url = self.client.presigned_get_object(
             self.bucket,
             object_name,
             expires=timedelta(seconds=expires)
         )
-        # 打印生成的原始URL
-        print(f"Original MinIO URL: {url}")
-        # 直接返回原始的MinIO URL
         return url
 
 
