@@ -82,3 +82,13 @@ export function getFileList(parentId = 0) {
     params: { parent_id: parentId }
   })
 }
+
+export function downloadBatch(fileIds) {
+  return request({
+    url: '/file/download/batch',
+    method: 'post',
+    data: fileIds,
+    responseType: 'blob'
+  })
+}
+

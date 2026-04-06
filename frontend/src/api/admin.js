@@ -13,3 +13,33 @@ export function getTotalStatistics() {
     method: 'get'
   })
 }
+
+export function getAllFiles() {
+  return request({
+    url: '/admin/file/list',
+    method: 'get'
+  })
+}
+
+export function deleteUser(userId) {
+  return request({
+    url: `/admin/user/${userId}`,
+    method: 'delete'
+  })
+}
+
+export function updateUserRole(userId, role) {
+  return request({
+    url: `/admin/user/${userId}/role`,
+    method: 'put',
+    params: { role }
+  })
+}
+
+export function deleteFile(fileId) {
+  return request({
+    url: `/admin/file/${fileId}`,
+    method: 'delete'
+  })
+}
+

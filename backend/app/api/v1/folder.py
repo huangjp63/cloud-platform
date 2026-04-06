@@ -56,4 +56,4 @@ def get_folder_list(
     current_user: User = Depends(get_current_user)
 ):
     folders = folder_service.get_folder_list(db, current_user.id, parent_id, current_user.role)
-    return APIResponse(code=200, message="获取成功", data=[{"id": folder.id, "name": folder.name, "create_time": folder.create_time.isoformat() if folder.create_time else None} for folder in folders])
+    return APIResponse(code=200, message="获取成功", data=[{"id": folder.id, "name": folder.name, "size": folder.size, "create_time": folder.create_time.isoformat() if folder.create_time else None} for folder in folders])

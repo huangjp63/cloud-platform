@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.dependencies import set_user_cache, delete_user_cache, user_to_dict
 from datetime import datetime
 
@@ -58,6 +58,18 @@ class UserService:
             db.commit()
             
             # 删除用户缓存
+            delete_user_cache(user_id)
+            return True
+        return False
+
+    def update_password(self, db: Session, user_id: int, old_password: str, new_password: str) -> bool:
+        """更新用户密码"""
+        user = db.query(User).filter(User.id == user_id).first()
+        if user and verify_password(old_password, user.password):
+            user.password = hash_password(new_password)
+            db.commit()
+
+            # 清除用户缓存，强制重新登录
             delete_user_cache(user_id)
             return True
         return False

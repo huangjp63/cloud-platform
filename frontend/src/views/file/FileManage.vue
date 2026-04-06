@@ -10,11 +10,13 @@
           <div class="actions">
             <el-button type="primary" @click="showUploadDialog">上传文件</el-button>
             <el-button @click="createFolder">新建文件夹</el-button>
+            <el-button type="success" @click="batchDownload" :disabled="selectedRows.length === 0">批量下载</el-button>
           </div>
         </div>
       </template>
       
-      <el-table :data="combinedList" style="width: 100%">
+      <el-table :data="combinedList" style="width: 100%" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="name" label="文件名">
           <template #default="{ row }">
             <span v-if="row.type === 'folder'" style="display: flex; align-items: center; gap: 8px; cursor: pointer" @click="enterFolder(row)">
@@ -29,7 +31,11 @@
             {{ formatFileSize(row.size || 0) }}
           </template>
         </el-table-column>
-        <el-table-column prop="create_time" label="创建时间" width="180" />
+        <el-table-column prop="create_time" label="创建时间" width="180">
+          <template #default="{ row }">
+            {{ formatDate(row.create_time) }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="250">
           <template #default="{ row }">
             <el-button v-if="row.type === 'file'" link type="primary" @click="previewFile(row)">预览</el-button>
@@ -130,7 +136,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { formatFileSize } from '@/utils/format'
+import { formatFileSize, formatDate } from '@/utils/format'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Folder, Document } from '@element-plus/icons-vue'
 import * as fileApi from '@/api/file'
@@ -158,6 +164,7 @@ const renameDialogVisible = ref(false)
 const uploadLoading = ref(false)
 const selectedFiles = ref([])
 const currentFile = ref(null)
+const selectedRows = ref([])
 
 // 预览相关
 const previewDialogVisible = ref(false)
@@ -443,6 +450,84 @@ const deleteFile = (row) => {
   }).catch(() => {})
 }
 
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+  // 允许选择文件和文件夹
+  selectedRows.value = selection
+}
+
+// 递归获取文件夹内的所有文件
+const getFilesInFolder = async (folderId) => {
+  try {
+    // 获取文件夹内的文件
+    const fileResponse = await fileApi.getFileList(folderId)
+    const files = fileResponse.data
+    
+    // 获取文件夹内的子文件夹
+    const folderResponse = await folderApi.getFolderList(folderId)
+    const subfolders = folderResponse.data
+    
+    // 收集当前文件夹内的文件 ID
+    const fileIds = files.map(file => file.id)
+    
+    // 递归处理子文件夹
+    for (const subfolder of subfolders) {
+      const subfolderFileIds = await getFilesInFolder(subfolder.id)
+      fileIds.push(...subfolderFileIds)
+    }
+    
+    return fileIds
+  } catch (error) {
+    console.error('获取文件夹内容失败:', error)
+    return []
+  }
+}
+
+// 批量下载
+const batchDownload = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请选择要下载的文件或文件夹')
+    return
+  }
+  
+  try {
+    let allFileIds = []
+    
+    // 处理每个选中的项目
+    for (const row of selectedRows.value) {
+      if (row.type === 'file') {
+        // 如果是文件，直接添加到列表
+        allFileIds.push(row.id)
+      } else if (row.type === 'folder') {
+        // 如果是文件夹，递归获取所有文件
+        const folderFileIds = await getFilesInFolder(row.id)
+        allFileIds.push(...folderFileIds)
+      }
+    }
+    
+    if (allFileIds.length === 0) {
+      ElMessage.warning('所选文件夹为空，没有可下载的文件')
+      return
+    }
+    
+    const response = await fileApi.downloadBatch(allFileIds)
+    
+    const blob = new Blob([response.data], { type: 'application/zip' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `files_${new Date().getTime()}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success(`成功下载 ${allFileIds.length} 个文件`)
+  } catch (error) {
+    ElMessage.error('批量下载失败')
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadFileList()
@@ -526,3 +611,4 @@ onMounted(() => {
   margin: 20px 0;
 }
 </style>
+

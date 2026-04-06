@@ -27,3 +27,10 @@ export function cleanExpired() {
     method: 'post'
   })
 }
+
+export function getFolderContents(folderId) {
+  return request({
+    url: `/recycle/folder/${folderId}`,
+    method: 'get'
+  })
+}

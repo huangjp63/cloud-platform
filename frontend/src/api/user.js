@@ -29,3 +29,11 @@ export function getUserInfo() {
     method: 'get'
   })
 }
+
+export function changePassword(data) {
+  return request({
+    url: '/user/password',
+    method: 'put',
+    data
+  })
+}

@@ -46,20 +46,54 @@ class FolderService:
     def check_folder_owner(self, db: Session, folder_id: int, user_id: int) -> bool:
         folder = db.query(Folder).filter(Folder.id == folder_id).first()
         return folder and folder.user_id == user_id
-    
+   
     def delete_folder(self, db: Session, folder_id: int, user_id: int):
         folder = db.query(Folder).filter(Folder.id == folder_id, Folder.is_deleted == 0).first()
         if not folder:
             return
-        
-        # 检查权限
         if folder.user_id != user_id:
             return
-        
+
+        # 递归处理文件夹内的文件
+        def process_files(folder_id):
+            files = db.query(File).filter(File.folder_id == folder_id, File.is_deleted == 0).all()
+            for file in files:
+                recycle_item = RecycleItem(
+                    item_type="file",
+                    item_id=file.id,
+                    name=file.name,
+                    size=file.size,
+                    user_id=user_id,
+                    original_path=file.storage_path
+                )
+                db.add(recycle_item)
+                file.is_deleted = 1
+            # 递归处理子文件夹
+            subfolders = db.query(Folder).filter(Folder.parent_id == folder_id, Folder.is_deleted == 0).all()
+            for subfolder in subfolders:
+            # 移动子文件夹到回收站
+                subfolder_size = self.calculate_folder_size(db, subfolder.id)
+                recycle_item = RecycleItem(
+                    item_type="folder",
+                    item_id=subfolder.id,
+                    name=subfolder.name,
+                    size=subfolder_size,
+                    user_id=user_id,
+                    original_path=f"folder/{subfolder.id}"
+                )
+                db.add(recycle_item)
+                # 标记子文件夹为已删除
+                subfolder.is_deleted = 1
+                # 递归处理子文件夹内的文件
+                process_files(subfolder.id)
+
+        # 处理文件夹内的所有文件和子文件夹
+        process_files(folder_id)
+
         # 计算文件夹大小
         size = self.calculate_folder_size(db, folder_id)
-        
-        # 移动到回收站
+
+        # 移动主文件夹到回收站
         recycle_item = RecycleItem(
             item_type="folder",
             item_id=folder.id,
@@ -69,10 +103,11 @@ class FolderService:
             original_path=f"folder/{folder.id}"
         )
         db.add(recycle_item)
-        
-        # 标记文件夹为已删除
+
+        # 标记主文件夹为已删除
         folder.is_deleted = 1
         db.commit()
+
     
     def rename_folder(self, db: Session, folder_id: int, name: str) -> Folder:
         folder = db.query(Folder).filter(Folder.id == folder_id).first()

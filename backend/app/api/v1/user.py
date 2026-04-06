@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse, PasswordChange
 from app.schemas.response import APIResponse
 from app.services import user_service
 from app.core.security import create_token, verify_password
@@ -75,4 +75,37 @@ def get_user_info(current_user: User = Depends(get_current_user)):
             "create_time": format_datetime(current_user.create_time),
             "last_login_time": format_datetime(current_user.last_login_time)
         }
+    )
+
+@router.put("/password", response_model=APIResponse)
+def change_password(
+    password_data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 验证新密码和确认密码是否一致
+    if password_data.new_password != password_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="两次输入的新密码不一致"
+        )
+    
+    # 更新密码
+    success = user_service.update_password(
+        db,
+        current_user.id,
+        password_data.old_password,
+        password_data.new_password
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="原密码错误"
+        )
+    
+    return APIResponse(
+        code=200,
+        message="密码修改成功，请重新登录",
+        data=None
     )

@@ -75,3 +75,15 @@ def clean_expired(
 ):
     count = recycle_service.clean_expired_items(db)
     return APIResponse(code=200, message=f"已清理 {count} 个过期项目", data={"count": count})
+
+@router.get("/folder/{folder_id}", response_model=APIResponse)
+def get_folder_contents(
+    folder_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = recycle_service.get_folder_contents(db, folder_id, current_user.id, current_user.role)
+    if result:
+        return APIResponse(code=200, message="获取成功", data=result)
+    else:
+        return APIResponse(code=404, message="文件夹不存在或无权访问", data=None)

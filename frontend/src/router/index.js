@@ -65,6 +65,11 @@ const routes = [
         component: () => import('@/views/admin/UserManage.vue')
       },
       {
+        path: 'files',
+        name: 'FileManageAdmin',
+        component: () => import('@/views/admin/FileManage.vue')
+      },
+      {
         path: 'stats',
         name: 'SystemStats',
         component: () => import('@/views/admin/SystemStats.vue')
